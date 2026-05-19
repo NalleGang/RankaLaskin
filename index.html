@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Kasetti">
+  <link rel="manifest" href="manifest.json">
+  <title>Kasettilaskuri</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #f5f2ec;
+      --surface: #ffffff;
+      --border: #d8d4cc;
+      --border-light: #f0ede8;
+      --text: #2a2a26;
+      --muted: #999;
+      --accent: #c8a86b;
+      --accent-light: #faf7f0;
+      --accent-border: #e8dfc8;
+      --blue: #4a7a9b;
+      --tan: #7a6a4a;
+      --danger: #c06050;
+      --mono: 'Courier New', Courier, monospace;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: var(--mono);
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top, 12px) 16px env(safe-area-inset-bottom, 16px);
+      padding-top: max(env(safe-area-inset-top), 16px);
+    }
+
+    .container { max-width: 540px; margin: 0 auto; }
+
+    /* Header */
+    .header { margin-bottom: 16px; }
+    .header-sub { font-size: 10px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+    .header-title { font-size: 20px; font-weight: bold; color: var(--text); }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+
+    .label { font-size: 10px; color: var(--muted); letter-spacing: .12em; margin-bottom: 8px; }
+
+    /* Input row */
+    .input-row { display: flex; gap: 8px; }
+    .expr-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 10px 12px;
+      font-size: 16px; /* prevents iOS zoom */
+      font-family: var(--mono);
+      background: #faf9f7;
+      color: var(--text);
+      outline: none;
+      min-width: 0;
+    }
+    .expr-input.error { border-color: var(--danger); }
+    .expr-input::placeholder { color: #ccc; }
+    .btn-add {
+      background: var(--text);
+      border: none;
+      border-radius: 2px;
+      color: var(--accent);
+      font-size: 13px;
+      font-family: var(--mono);
+      font-weight: bold;
+      padding: 10px 16px;
+      cursor: pointer;
+      letter-spacing: .08em;
+      white-space: nowrap;
+      -webkit-appearance: none;
+    }
+    .btn-add:active { opacity: .75; }
+    .error-msg { color: var(--danger); font-size: 11px; margin-top: 6px; }
+
+    /* Presets */
+    .presets { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+    .btn-preset {
+      background: var(--border-light);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: #666;
+      font-size: 13px;
+      font-family: var(--mono);
+      padding: 6px 14px;
+      cursor: pointer;
+      -webkit-appearance: none;
+    }
+    .btn-preset:active { background: var(--border); }
+    .hint { margin-left: auto; font-size: 10px; color: #ccc; }
+
+    /* Preview */
+    .preview { margin-top: 10px; border-top: 1px dashed #e0ddd8; padding-top: 8px; }
+    .preview-label { font-size: 10px; color: var(--muted); letter-spacing: .1em; margin-bottom: 6px; }
+    .preview-chips { display: flex; flex-wrap: wrap; gap: 3px 6px; }
+    .chip {
+      font-size: 11px;
+      color: var(--accent);
+      background: var(--accent-light);
+      border: 1px solid var(--accent-border);
+      border-radius: 2px;
+      padding: 2px 6px;
+    }
+
+    /* Table */
+    .table-wrap { overflow: hidden; margin-bottom: 10px; }
+    .table-head {
+      display: grid;
+      grid-template-columns: 28px 32px 76px 106px 1fr 26px;
+      background: var(--border-light);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 12px;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: .1em;
+      gap: 4px;
+    }
+    .table-body { max-height: 50vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .row {
+      display: grid;
+      grid-template-columns: 28px 32px 76px 106px 1fr 26px;
+      padding: 8px 12px;
+      gap: 4px;
+      align-items: center;
+      border-bottom: 1px solid var(--border-light);
+      cursor: pointer;
+      user-select: none;
+      background: #fff;
+      transition: background .1s;
+    }
+    .row.checked { background: #f7f5f0; }
+    .row:active { background: var(--border-light); }
+
+    .checkbox {
+      width: 16px; height: 16px;
+      border: 2px solid #ccc;
+      border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #fff; font-weight: bold;
+      flex-shrink: 0;
+    }
+    .checkbox.on { background: var(--accent); border-color: var(--accent); }
+
+    .row-num { font-size: 11px; color: #bbb; }
+    .row-val { font-size: 14px; font-weight: bold; }
+    .row-val.c330 { color: var(--blue); }
+    .row-val.c630 { color: var(--tan); }
+    .row-val.other { color: var(--text); }
+    .row-val.struck { color: #bbb; text-decoration: line-through; }
+    .row-total { font-size: 14px; font-weight: bold; color: var(--text); }
+    .row-total.struck { color: #bbb; font-weight: normal; }
+    .row-del {
+      color: #ddd; font-size: 12px; text-align: center;
+      padding: 4px;
+      cursor: pointer;
+    }
+    .row-del:active { color: var(--danger); }
+
+    /* Footer */
+    .table-footer {
+      border-top: 2px solid var(--border);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #faf9f7;
+    }
+    .footer-meta { font-size: 11px; color: var(--muted); }
+    .footer-totals { text-align: right; }
+    .footer-checked { font-size: 11px; color: #bbb; margin-bottom: 2px; }
+    .footer-grand { font-size: 16px; font-weight: bold; color: var(--text); }
+
+    /* Action buttons */
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
+    .btn-action {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-size: 11px;
+      font-family: var(--mono);
+      padding: 7px 14px;
+      cursor: pointer;
+      letter-spacing: .08em;
+      -webkit-appearance: none;
+    }
+    .btn-action.clear-checks { color: var(--muted); }
+    .btn-action.reset { color: var(--danger); }
+    .btn-action:active { background: var(--border-light); }
+
+    .empty {
+      text-align: center;
+      padding: 48px 0;
+      color: #ccc;
+      font-size: 12px;
+      letter-spacing: .08em;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-sub">Metallijulkisivu · Kasettilaskuri</div>
+    <div class="header-title">Moduulimittalista</div>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="label">SYÖTE · esim. <span style="color:var(--accent)">330x4+630x2+330</span></div>
+    <div class="input-row">
+      <input id="expr" class="expr-input" type="text" inputmode="decimal"
+             placeholder="330x4+630x5" autocomplete="off" autocorrect="off"
+             autocapitalize="off" spellcheck="false">
+      <button class="btn-add" onclick="handleAdd()">+ LISÄÄ</button>
+    </div>
+    <div id="error-msg" class="error-msg" style="display:none"></div>
+    <div class="presets">
+      <button class="btn-preset" onclick="quickAdd(330)">+330</button>
+      <button class="btn-preset" onclick="quickAdd(630)">+630</button>
+      <span class="hint">Enter lisää</span>
+    </div>
+    <div id="preview" style="display:none" class="preview">
+      <div class="preview-label" id="preview-label"></div>
+      <div class="preview-chips" id="preview-chips"></div>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div id="list-wrap"></div>
+</div>
+
+<script>
+  // ── Storage ──────────────────────────────────────────────────────────────
+  const STORAGE_KEY = 'kasetti_rows_v1';
+
+  function loadRows() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveRows(rows) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let rows = loadRows(); // [{value, checked}]
+
+  // ── Parser ────────────────────────────────────────────────────────────────
+  function parseExpr(str) {
+    if (!str.trim()) return null;
+    const parts = str.trim().split('+');
+    const result = [];
+    for (const part of parts) {
+      const m = part.trim().match(/^(\d+)[xX*](\d+)$/);
+      if (m) {
+        result.push({ value: parseInt(m[1]), count: parseInt(m[2]) });
+      } else if (/^\d+$/.test(part.trim())) {
+        result.push({ value: parseInt(part.trim()), count: 1 });
+      } else {
+        return null;
+      }
+    }
+    return result;
+  }
+
+  function expandParsed(parsed) {
+    const out = [];
+    for (const { value, count } of parsed) {
+      for (let i = 0; i < count; i++) out.push(value);
+    }
+    return out;
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  function handleAdd() {
+    const input = document.getElementById('expr');
+    const val = input.value.trim();
+    const errEl = document.getElementById('error-msg');
+    if (!val) return;
+    const parsed = parseExpr(val);
+    if (!parsed) {
+      input.classList.add('error');
+      errEl.textContent = 'Tarkista syöte, esim. 330x4+630x2';
+      errEl.style.display = 'block';
+      return;
+    }
+    input.classList.remove('error');
+    errEl.style.display = 'none';
+    const vals = expandParsed(parsed);
+    rows.push(...vals.map(v => ({ value: v, checked: false })));
+    saveRows(rows);
+    input.value = '';
+    hidePreview();
+    render();
+    input.focus();
+  }
+
+  function quickAdd(v) {
+    rows.push({ value: v, checked: false });
+    saveRows(rows);
+    render();
+  }
+
+  function toggleCheck(i) {
+    rows[i].checked = !rows[i].checked;
+    saveRows(rows);
+    render();
+  }
+
+  function removeRow(i) {
+    rows.splice(i, 1);
+    saveRows(rows);
+    render();
+  }
+
+  function clearChecks() {
+    rows.forEach(r => r.checked = false);
+    saveRows(rows);
+    render();
+  }
+
+  function resetAll() {
+    if (rows.length === 0) return;
+    if (confirm('Nollataan koko lista?')) {
+      rows = [];
+      saveRows(rows);
+      render();
+    }
+  }
+
+  // ── Preview ───────────────────────────────────────────────────────────────
+  let previewTimeout = null;
+
+  function updatePreview(str) {
+    clearTimeout(previewTimeout);
+    previewTimeout = setTimeout(() => {
+      const previewEl = document.getElementById('preview');
+      if (!str.trim()) { hidePreview(); return; }
+      const parsed = parseExpr(str);
+      if (!parsed) { hidePreview(); return; }
+      const vals = expandParsed(parsed);
+      if (!vals.length) { hidePreview(); return; }
+
+      const currentTotal = rows.reduce((s, r) => s + r.value, 0);
+      let running = currentTotal;
+      const chips = vals.map(v => {
+        running += v;
+        return `<span class="chip">${fmt(v)} → <strong>${fmt(running)}</strong></span>`;
+      });
+
+      document.getElementById('preview-label').textContent =
+        `ESIKATSELU · ${vals.length} mittaa, +${fmt(vals.reduce((s,v)=>s+v,0))} mm`;
+      document.getElementById('preview-chips').innerHTML = chips.join('');
+      previewEl.style.display = 'block';
+    }, 120);
+  }
+
+  function hidePreview() {
+    document.getElementById('preview').style.display = 'none';
+  }
+
+  // ── Format ────────────────────────────────────────────────────────────────
+  function fmt(n) { return n.toLocaleString('fi-FI'); }
+
+  function valClass(v, checked) {
+    if (checked) return 'struck';
+    if (v === 330) return 'c330';
+    if (v === 630) return 'c630';
+    return 'other';
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function render() {
+    const wrap = document.getElementById('list-wrap');
+
+    if (rows.length === 0) {
+      wrap.innerHTML = '<div class="empty">Lisää mittoja syöttökentästä</div>';
+      return;
+    }
+
+    let running = 0;
+    const rowsHtml = rows.map((r, i) => {
+      running += r.value;
+      return `
+        <div class="row${r.checked ? ' checked' : ''}" onclick="toggleCheck(${i})">
+          <div class="checkbox${r.checked ? ' on' : ''}">${r.checked ? '✓' : ''}</div>
+          <div class="row-num">${i + 1}</div>
+          <div class="row-val ${valClass(r.value, r.checked)}">${fmt(r.value)}</div>
+          <div class="row-total${r.checked ? ' struck' : ''}">${fmt(running)}</div>
+          <div></div>
+          <div class="row-del" onclick="event.stopPropagation();removeRow(${i})">✕</div>
+        </div>`;
+    }).join('');
+
+    const grandTotal = rows.reduce((s, r) => s + r.value, 0);
+    const checkedTotal = rows.filter(r => r.checked).reduce((s, r) => s + r.value, 0);
+    const checkedCount = rows.filter(r => r.checked).length;
+
+    wrap.innerHTML = `
+      <div class="card table-wrap">
+        <div class="table-head">
+          <span>✓</span><span>#</span><span>MITTA</span><span>JUOKSEVA</span><span></span><span></span>
+        </div>
+        <div class="table-body">${rowsHtml}</div>
+        <div class="table-footer">
+          <div class="footer-meta">${rows.length} mittaa · ${checkedCount} merkitty</div>
+          <div class="footer-totals">
+            ${checkedCount > 0 ? `<div class="footer-checked">Merkitty: ${fmt(checkedTotal)} mm</div>` : ''}
+            <div class="footer-grand">Yht. ${fmt(grandTotal)} mm</div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn-action clear-checks" onclick="clearChecks()">TYHJENNÄ MERKIT</button>
+        <button class="btn-action reset" onclick="resetAll()">NOLLAA LISTA</button>
+      </div>`;
+  }
+
+  // ── Event listeners ───────────────────────────────────────────────────────
+  document.getElementById('expr').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleAdd();
+  });
+
+  document.getElementById('expr').addEventListener('input', e => {
+    document.getElementById('expr').classList.remove('error');
+    document.getElementById('error-msg').style.display = 'none';
+    updatePreview(e.target.value);
+  });
+
+  // ── Service worker ────────────────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  render();
+</script>
+</body>
+</html>
