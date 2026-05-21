@@ -11,12 +11,17 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     body{background:#f5f2ec;font-family:'Courier New',Courier,monospace;min-height:100vh;padding:max(env(safe-area-inset-top),16px) 16px env(safe-area-inset-bottom,16px);}
-    #app{max-width:560px;margin:0 auto;}
+    #app{max-width:560px;margin:0 auto;min-height:calc(100vh - max(env(safe-area-inset-top),16px) - env(safe-area-inset-bottom,16px));display:flex;flex-direction:column;gap:10px;}
     button{min-height:40px;touch-action:manipulation;}
     .header-sub{font-size:10px;letter-spacing:.15em;color:#999;text-transform:uppercase;margin-bottom:2px;}
-    .header-title{font-size:20px;font-weight:bold;color:#2a2a26;margin-bottom:14px;}
+    .header-title{font-size:20px;font-weight:bold;color:#2a2a26;}
     .card{background:#fff;border:1px solid #d8d4cc;border-radius:2px;padding:14px 16px;margin-bottom:10px;}
     .label{font-size:10px;color:#999;letter-spacing:.12em;margin-bottom:8px;}
+    .screen-body{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;}
+    .measurements-area{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;}
+    .section-hint{font-size:10px;color:#999;letter-spacing:.12em;}
+    .controls-stack{position:sticky;bottom:0;padding-top:4px;background:linear-gradient(to top,#f5f2ec 72%,rgba(245,242,236,0));}
+    .controls-stack .card:last-child{margin-bottom:0;}
     .input-row{display:flex;gap:8px;}
     input.expr{flex:1;border:1px solid #d0ccc4;border-radius:2px;padding:10px 12px;font-size:16px;font-family:inherit;background:#faf9f7;color:#2a2a26;outline:none;min-width:0;}
     input.expr.err{border-color:#c06050;}
@@ -31,16 +36,18 @@
     .preview-wrap{margin-top:10px;border-top:1px dashed #e0ddd8;padding-top:8px;}
     .chips{display:flex;flex-wrap:wrap;gap:3px 6px;}
     .chip{font-size:11px;color:#c8a86b;background:#faf7f0;border:1px solid #e8dfc8;border-radius:2px;padding:2px 6px;}
-    .tabs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px;align-items:center;}
+    .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;align-items:center;}
     .tab-wrap{display:flex;align-items:center;gap:3px;flex-shrink:0;}
     .btn-tab{border-radius:2px;font-size:12px;font-family:inherit;padding:8px 12px;cursor:pointer;white-space:nowrap;font-weight:bold;}
     .tab-rename{border:1px solid #c8a86b;border-radius:2px;padding:5px 8px;font-size:13px;font-family:inherit;color:#2a2a26;background:#fff;outline:none;width:90px;}
     .btn-tab-del{border-radius:2px;font-size:10px;padding:5px 9px;cursor:pointer;font-family:inherit;white-space:nowrap;min-height:34px;}
     .btn-add-section{background:#fff;border:1px dashed #b9b0a1;border-radius:2px;color:#7f776b;font-size:12px;font-family:inherit;padding:8px 12px;cursor:pointer;flex-shrink:0;font-weight:bold;}
-    .table-head{display:grid;grid-template-columns:28px 28px 72px 100px 26px 24px;background:#f0ede8;border-bottom:1px solid #d8d4cc;padding:7px 10px;font-size:10px;color:#999;letter-spacing:.1em;gap:4px;}
-    .table-body{max-height:45vh;overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
-    .row{display:grid;grid-template-columns:28px 28px 72px 100px 26px 24px;padding:7px 10px;gap:4px;align-items:center;border-bottom:1px solid #f0ede8;cursor:pointer;}
+    .table-wrap{display:flex;flex-direction:column;flex:1;min-height:0;}
+    .table-head{display:grid;grid-template-columns:28px 28px minmax(72px,1fr) minmax(96px,1.2fr) 30px 24px 24px;background:#f0ede8;border-bottom:1px solid #d8d4cc;padding:7px 10px;font-size:10px;color:#999;letter-spacing:.1em;gap:4px;}
+    .table-body{overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-behavior:auto;min-height:220px;max-height:100%;}
+    .row{display:grid;grid-template-columns:28px 28px minmax(72px,1fr) minmax(96px,1.2fr) 30px 24px 24px;padding:7px 10px;gap:4px;align-items:center;border-bottom:1px solid #f0ede8;cursor:pointer;background:#fff;}
     .row.checked{background:#f7f5f0;}
+    .row.dragging{background:#fff8ee;box-shadow:inset 0 0 0 1px #e8d4a0;}
     .checkbox{width:16px;height:16px;border:2px solid #ccc;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;flex-shrink:0;}
     .checkbox.on{background:#c8a86b;border-color:#c8a86b;}
     .row-num{font-size:11px;color:#bbb;}
@@ -52,6 +59,8 @@
     .btn-zero{background:#fff;border:1px solid #d9cfbf;border-radius:2px;color:#9a8d79;font-size:11px;padding:2px 4px;cursor:pointer;line-height:1;min-height:28px;}
     .btn-zero.on{border-color:#c8a86b;color:#c8a86b;}
     .row-del{color:#bbaea2;font-size:14px;text-align:center;cursor:pointer;font-weight:bold;}
+    .row-drag{display:flex;align-items:center;justify-content:center;color:#c8a86b;border:1px dashed #d8c49a;border-radius:2px;background:#fffaf0;font-size:12px;font-weight:bold;min-height:28px;touch-action:none;}
+    .row-drag.off{opacity:.35;border-color:#ebe6dd;color:#cfc7bb;background:#faf9f7;pointer-events:none;}
     .zero-sep{display:flex;align-items:center;gap:8px;padding:4px 10px;background:#fff8ee;border-bottom:1px solid #f0e8d0;border-top:1px solid #f0e8d0;}
     .zero-sep-line{flex:1;height:1px;background:#e8d4a0;}
     .zero-sep-label{font-size:10px;color:#c8a86b;letter-spacing:.1em;white-space:nowrap;}
@@ -65,8 +74,14 @@
     .btn-action.danger{border-color:#c06050;color:#c06050;background:#fff7f5;}
     .btn-action.normal{color:#6f685f;}
     .empty{text-align:center;padding:40px 0;color:#ccc;font-size:12px;letter-spacing:.08em;}
+    .edit-note{margin-top:8px;font-size:10px;color:#a28655;letter-spacing:.08em;}
     button:focus-visible{outline:2px solid #c8a86b;outline-offset:2px;}
     button:active{transform:translateY(1px);box-shadow:none;}
+    @media (max-width:480px){
+      body{padding:max(env(safe-area-inset-top),12px) 12px env(safe-area-inset-bottom,12px);}
+      .card{padding:12px;}
+      .table-head,.row{grid-template-columns:24px 24px minmax(64px,1fr) minmax(82px,1.1fr) 28px 22px 22px;padding:7px 8px;}
+    }
   </style>
 </head>
 <body>
@@ -107,11 +122,12 @@ function saveData(d){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}ca
 
 // ── State ──────────────────────────────────────────────────────────────────
 let data=loadData();
-let expr='',error='',preview=null,editingPresets=false,newPreset='';
+let expr='',error='',preview=null,editMode=false,newPreset='';
 let confirmDelete=null,confirmTimer=null;
 let renamingId=null,renameVal='';
 let previewTimer=null;
 let pendingScrollToLatest=false;
+let draggingRowId=null;
 
 function save(){saveData(data);}
 
@@ -123,11 +139,45 @@ function scrollLatestIntoView(){
   pendingScrollToLatest=false;
   requestAnimationFrame(()=>{
     const body=document.querySelector('.table-body');
-    const latest=body?.querySelector('.row:last-of-type');
-    if(!body||!latest)return;
-    latest.scrollIntoView({block:'nearest'});
+    if(!body)return;
     body.scrollTop=body.scrollHeight;
   });
+}
+function setSectionRows(nextRows){
+  data.sections=data.sections.map(s=>s.id===data.activeId?{...s,rows:nextRows}:s);
+}
+function startRowDrag(event,id){
+  if(!editMode)return;
+  event.preventDefault();
+  event.stopPropagation();
+  draggingRowId=id;
+  document.addEventListener('pointermove',handleRowDragMove);
+  document.addEventListener('pointerup',endRowDrag);
+  document.addEventListener('pointercancel',endRowDrag);
+  render();
+}
+function handleRowDragMove(event){
+  if(!draggingRowId)return;
+  const rowEl=document.elementFromPoint(event.clientX,event.clientY)?.closest('.row');
+  const overId=rowEl?.dataset.rowId;
+  if(!overId||overId===draggingRowId)return;
+  const rows=section().rows.slice();
+  const from=rows.findIndex(r=>r.id===draggingRowId);
+  const to=rows.findIndex(r=>r.id===overId);
+  if(from<0||to<0)return;
+  const[moved]=rows.splice(from,1);
+  rows.splice(to,0,moved);
+  setSectionRows(rows);
+  save();
+  render();
+}
+function endRowDrag(){
+  if(!draggingRowId)return;
+  draggingRowId=null;
+  document.removeEventListener('pointermove',handleRowDragMove);
+  document.removeEventListener('pointerup',endRowDrag);
+  document.removeEventListener('pointercancel',endRowDrag);
+  render();
 }
 
 // ── Mutations ──────────────────────────────────────────────────────────────
@@ -234,9 +284,9 @@ function render(){
   const presetsHtml=data.presets.map(v=>`
     <div style="display:flex;align-items:center;gap:3px;">
       <button class="btn-preset" style="color:${presetColor(v)};" onclick="queueScrollToLatest();updateRows(rows=>[...rows,makeRow(${v})])">+${v}</button>
-      ${editingPresets?`<button class="btn-preset-del" onclick="removePreset(${v})">✕</button>`:''}
+      ${editMode?`<button class="btn-preset-del" onclick="removePreset(${v})">✕</button>`:''}
     </div>`).join('');
-  const presetAddHtml=editingPresets?`
+  const presetAddHtml=editMode?`
     <div style="display:flex;gap:4px;align-items:center;">
       <input class="preset-add-input" placeholder="uusi" value="${newPreset}" oninput="newPreset=this.value" onkeydown="if(event.key==='Enter')addPreset()">
       <button class="btn-action normal" onclick="addPreset()">+</button>
@@ -254,19 +304,20 @@ function render(){
     const sep=r.isZero?`<div class="zero-sep"><div class="zero-sep-line"></div><span class="zero-sep-label">↺ TEIPPI NOLLATTU</span><div class="zero-sep-line"></div></div>`:'';
     const absLabel=r.segTotal!==r.absTotal?`<span class="row-abs">/${fmt(r.absTotal)}</span>`:'';
     return`${sep}
-    <div class="row${r.checked?' checked':''}" onclick="toggleCheck('${r.id}')">
+    <div class="row${r.checked?' checked':''}${draggingRowId===r.id?' dragging':''}" data-row-id="${r.id}" onclick="${editMode?'void(0)':`toggleCheck('${r.id}')`}">
       <div class="checkbox${r.checked?' on':''}">${r.checked?'✓':''}</div>
       <span class="row-num">${i+1}</span>
       <span class="row-val${r.checked?' struck':''}" style="color:${r.checked?'#bbb':presetColor(r.value)}">${fmt(r.value)}</span>
       <div><span class="row-total${r.checked?' dim':''}">${fmt(r.segTotal)}</span>${absLabel}</div>
       <button class="btn-zero${r.isZero?' on':''}" onclick="event.stopPropagation();toggleZero('${r.id}')">↺</button>
       <span class="row-del" onclick="event.stopPropagation();removeRow('${r.id}')">✕</span>
+      <div class="row-drag${editMode?'':' off'}" onpointerdown="startRowDrag(event,'${r.id}')">↕</div>
     </div>`;
   }).join('');
 
   const tableHtml=rows.length?`
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div class="table-head"><span>✓</span><span>#</span><span>MITTA</span><span>JUOKSEVA</span><span>↺</span><span></span></div>
+    <div class="card table-wrap" style="padding:0;overflow:hidden;">
+      <div class="table-head"><span>✓</span><span>#</span><span>MITTA</span><span>JUOKSEVA</span><span>↺</span><span>✕</span><span>${editMode?'↕':''}</span></div>
       <div class="table-body">${rowsHtml}</div>
       <div class="table-footer">
         <div class="footer-meta">${rows.length} mittaa · ${checkedCount} merkitty</div>
@@ -279,26 +330,37 @@ function render(){
     <div class="actions">
       <button class="btn-action normal" onclick="clearChecks()">TYHJENNÄ MERKIT</button>
       <button class="btn-action danger" onclick="resetSection()">NOLLAA LISTA</button>
-    </div>`:`<div class="empty">Lisää mittoja syöttökentästä</div>`;
+    </div>`:`<div class="card table-wrap" style="display:flex;justify-content:center;margin-bottom:0;"><div class="empty">Lisää mittoja syöttökentästä</div></div>`;
 
   document.getElementById('app').innerHTML=`
     <div class="header-sub">Metallijulkisivu · Kasettilaskuri</div>
     <div class="header-title">Moduulimittalista</div>
-    <div class="tabs">${tabsHtml}<button class="btn-add-section" onclick="addSection()">+ seinä</button></div>
-    <div class="card">
-      <div class="label">SYÖTE · esim. <span style="color:#c8a86b">330x4+630x2+330</span></div>
-      <div class="input-row">
-        <input class="expr${error?' err':''}" type="text" inputmode="decimal" placeholder="330x4+630x5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${expr.replace(/"/g,'&quot;')}" oninput="handleExprInput(this.value)" onkeydown="if(event.key==='Enter')handleAdd()">
-        <button class="btn-add" onclick="handleAdd()">+ LISÄÄ</button>
+    <div class="screen-body">
+      <div class="measurements-area">
+        <div class="section-hint">Mittalista pysyy ylhäällä, syöttö alhaalla peukalon kohdalla.</div>
+        ${tableHtml}
       </div>
-      ${error?`<div class="err-msg">${error}</div>`:''}
-      <div class="preset-row">
-        ${presetsHtml}${presetAddHtml}
-        <button class="btn-text" style="margin-left:auto;font-size:11px;color:${editingPresets?'#c8a86b':'#ccc'};" onclick="editingPresets=!editingPresets;render()">${editingPresets?'valmis':'muokkaa'}</button>
+      <div class="controls-stack">
+        <div class="card">
+          <div class="label">SYÖTE · esim. <span style="color:#c8a86b">330x4+630x2+330</span></div>
+          <div class="input-row">
+            <input class="expr${error?' err':''}" type="text" inputmode="decimal" placeholder="330x4+630x5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="${expr.replace(/"/g,'&quot;')}" oninput="handleExprInput(this.value)" onkeydown="if(event.key==='Enter')handleAdd()">
+            <button class="btn-add" onclick="handleAdd()">+ LISÄÄ</button>
+          </div>
+          ${error?`<div class="err-msg">${error}</div>`:''}
+          <div class="preset-row">
+            ${presetsHtml}${presetAddHtml}
+            <button class="btn-text" style="margin-left:auto;font-size:11px;color:${editMode?'#c8a86b':'#6f685f'};" onclick="editMode=!editMode;render()">${editMode?'valmis':'muokkaa'}</button>
+          </div>
+          ${editMode?'<div class="edit-note">Muokkaustila: vedä rivejä kahvasta, poista rivejä ja hallitse pikapainikkeita.</div>':''}
+          ${previewHtml}
+        </div>
+        <div class="card">
+          <div class="tabs">${tabsHtml}<button class="btn-add-section" onclick="addSection()">+ seinä</button></div>
+        </div>
       </div>
-      ${previewHtml}
     </div>
-    ${tableHtml}`;
+  `;
 
   scrollLatestIntoView();
 }
