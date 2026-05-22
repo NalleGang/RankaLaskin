@@ -128,6 +128,7 @@ let renamingId=null,renameVal='';
 let previewTimer=null;
 let pendingScrollToLatest=false;
 let draggingRowId=null;
+let hideControls=false;
 
 function save(){saveData(data);}
 
@@ -329,6 +330,7 @@ function render(){
       </div>
     </div>
     <div class="actions">
+      <button class="btn-action normal" onclick="hideControls=!hideControls;render()">${hideControls?'NÄYTÄ NAPIT':'PIILOTA NAPIT'}</button>
       <button class="btn-action normal" onclick="clearChecks()">TYHJENNÄ MERKIT</button>
       <button class="btn-action danger" onclick="resetSection()">NOLLAA LISTA</button>
     </div>`:`<div class="card table-wrap" style="display:flex;justify-content:center;margin-bottom:0;"><div class="empty">Lisää mittoja syöttökentästä</div></div>`;
@@ -341,7 +343,7 @@ function render(){
         <div class="section-hint">Mittalista pysyy ylhäällä, syöttö alhaalla peukalon kohdalla.</div>
         ${tableHtml}
       </div>
-      <div class="controls-stack">
+      ${hideControls?'':`<div class="controls-stack">
         <div class="card">
           <div class="label">SYÖTE · esim. <span style="color:#c8a86b">330x4+630x2+330</span></div>
           <div class="input-row">
@@ -359,7 +361,7 @@ function render(){
         <div class="card">
           <div class="tabs">${tabsHtml}<button class="btn-add-section" onclick="addSection()">+ seinä</button></div>
         </div>
-      </div>
+      </div>`}
     </div>
   `;
 
